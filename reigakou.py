@@ -11,7 +11,7 @@ from fpdf import FPDF
 load_dotenv()
 CATEGORY_ID = 33  # Set your category ID
 PER_PAGE = 100
-CF_CLEARANCE = os.getenv("CF_CLEARANCE") # your cf clearance token
+CF_CLEARANCE = os.getenv("CF_CLEARANCE")  # your cf clearance token
 if not CF_CLEARANCE:
     raise ValueError("CF_CLEARANCE environment variable not set.")
 
@@ -38,9 +38,23 @@ def get_category_name(category_id):
         return f"category_{category_id}"
 
 def clean_html(raw_html):
-    """Strip HTML tags and return plain text"""
+    """Clean HTML, remove unwanted sections, and format paragraphs."""
     soup = BeautifulSoup(raw_html, "html.parser")
-    return soup.get_text(separator="\n", strip=True)
+
+    # Remove unwanted elements
+    for selector in [
+        ".sharedaddy",        # social share
+        ".post-navigation",   # previous/next links
+        ".entry-footer",      # footer links like Patreon
+        "script", "style"     # any scripts/styles
+    ]:
+        for el in soup.select(selector):
+            el.decompose()
+
+    # Extract text and normalize paragraphs
+    text = soup.get_text(separator="\n", strip=True)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return "\n\n".join(lines)
 
 def fetch_post_content(url):
     """Fetch the title, content, and date of a single post"""
@@ -56,7 +70,7 @@ def fetch_post_content(url):
 
         return {
             "title": title_tag.get_text(strip=True) if title_tag else "No Title",
-            "content": content_tag.get_text(separator="\n", strip=True) if content_tag else "No Content",
+            "content": content_tag.prettify() if content_tag else "No Content",
             "date": date_tag["datetime"] if date_tag and date_tag.has_attr("datetime") else "No Date",
             "url": url
         }
@@ -65,7 +79,7 @@ def fetch_post_content(url):
         print(f"❌ Error fetching {url}: {e}")
         return None
 
-# --- DYNAMIC CATEGORY NAME & FILE SETUP ---
+# --- SETUP FILES & FOLDERS ---
 CATEGORY_NAME = get_category_name(CATEGORY_ID)
 API_JSON_FILE = f"{CATEGORY_NAME}_api.json"
 POSTS_JSON_FILE = f"{CATEGORY_NAME}_posts.json"
@@ -131,7 +145,7 @@ for post in tqdm(all_posts, desc="Fetching posts", unit="post"):
 
 print(f"\n✅ Total posts saved: {len(posts_data)}")
 
-# --- CREATE KINDLE-FRIENDLY EPUB ---
+# --- CREATE EPUB ---
 book = epub.EpubBook()
 book.set_identifier("ls001")
 book.set_title(CATEGORY_NAME.replace("_"," "))
@@ -141,8 +155,10 @@ book.add_author("Reigokai Translations")
 chapters = []
 for idx, post in enumerate(tqdm(posts_data, desc="Creating EPUB chapters")):
     content_text = clean_html(post["content"])
+    # Wrap paragraphs properly
+    paragraphs = "".join(f"<p>{p}</p>" for p in content_text.split("\n\n"))
     chapter = epub.EpubHtml(title=post["title"], file_name=f"chap_{idx+1}.xhtml", lang="en")
-    chapter.content = f"<h1>{post['title']}</h1><h4>{post['date']}</h4><p>{content_text.replace('\n','<br/>')}</p>"
+    chapter.content = f"<h1>{post['title']}</h1><h4>{post['date']}</h4>{paragraphs}"
     book.add_item(chapter)
     chapters.append(chapter)
 
@@ -155,23 +171,29 @@ epub_file = os.path.join(OUTPUT_DIR, f"{CATEGORY_NAME}.epub")
 epub.write_epub(epub_file, book)
 print(f"✅ EPUB created: {epub_file}")
 
-# --- CREATE PDF ---
+# --- CREATE PDF WITH UNICODE SUPPORT ---
 pdf = FPDF()
 pdf.set_auto_page_break(auto=True, margin=15)
 pdf.add_page()
-pdf.set_font("Arial", "B", 16)
+
+# Use a Unicode font (make sure DejaVuSans.ttf is in the same directory)
+FONT_PATH = "DejaVuSans.ttf"
+pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
+pdf.set_font("DejaVu", "B", 16)
 pdf.cell(0, 10, CATEGORY_NAME.replace("_"," "), ln=True, align="C")
 pdf.ln(10)
 
 for post in tqdm(posts_data, desc="Adding posts to PDF"):
-    pdf.set_font("Arial", "B", 14)
+    pdf.set_font("DejaVu", "B", 14)
     pdf.multi_cell(0, 10, f"{post['title']} ({post['date']})")
     pdf.ln(2)
 
-    pdf.set_font("Arial", "", 12)
+    pdf.set_font("DejaVu", "", 12)
     content_text = clean_html(post["content"])
-    pdf.multi_cell(0, 8, content_text)
-    pdf.ln(10)
+    for para in content_text.split("\n\n"):
+        pdf.multi_cell(0, 8, para)
+        pdf.ln(4)  # gap between paragraphs
+    pdf.ln(10)  # gap between posts
 
 pdf_file = os.path.join(OUTPUT_DIR, f"{CATEGORY_NAME}.pdf")
 pdf.output(pdf_file)
