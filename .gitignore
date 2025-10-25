@@ -1,0 +1,30 @@
+# Python cache and environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Data files
+*_api.json
+*_posts.json
+
+# EPUB and PDF output
+*_ebook/
+*.epub
+*.pdf
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# System files
+.DS_Store
+Thumbs.db

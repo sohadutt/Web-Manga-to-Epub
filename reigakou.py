@@ -1,39 +1,49 @@
 import requests
 import json
 import os
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from ebooklib import epub
 from fpdf import FPDF
 
 # --- CONFIG ---
-CATEGORY_ID = 33
-CATEGORY_NAME = "Living_Safely"
+load_dotenv()
+CATEGORY_ID = 33  # Set your category ID
 PER_PAGE = 100
-CF_CLEARANCE = "GJgMiPJr9AMwH9teNh2f_eoaNppEm0IQAGurljcFe_g-1761404325-1.2.1.1-v_yCWypBE.NqBA6_G59hlTQacLTIKHavOZ76C9MYjpST9l4TzcTeJk_ne_abv_SdyUC7TpN_lt3Cuh2fTt0DGYau7xGrtvXHLaz_CNeeY1Evo1RH5QXrPpoXraoMSDOU4e_8kNZp.rSQZfn67PRAeo_VcYnPe1SaqXMNXTKwcugugoPlOKEUxxXhykFB7uSvgcgoEyS2P1uvGj3RBxwsVDnJhdipa0HT0uKfZOWJlfVcPv807ibtFgpZqSRZT5Ye"
+CF_CLEARANCE = os.getenv("CF_CLEARANCE") # your cf clearance token
+if not CF_CLEARANCE:
+    raise ValueError("CF_CLEARANCE environment variable not set.")
 
 BASE_URL = "https://reigokaitranslations.com/wp-json/wp/v2/posts"
-API_JSON_FILE = f"{CATEGORY_NAME}_api.json"
-POSTS_JSON_FILE = f"{CATEGORY_NAME}_posts.json"
-OUTPUT_DIR = f"{CATEGORY_NAME}_ebook"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0.1 Safari/605.1.15",
     "Accept": "application/json, text/javascript, */*; q=0.01",
     "Accept-Language": "en-IN,en-GB;q=0.9,en;q=0.8",
-    "Referer": f"https://reigokaitranslations.com/category/{CATEGORY_NAME.lower()}/",
+    "Referer": "https://reigokaitranslations.com/",
     "Cookie": f"cf_clearance={CF_CLEARANCE}"
 }
 
 # --- HELPER FUNCTIONS ---
+def get_category_name(category_id):
+    """Fetch category name from WordPress API"""
+    url = f"https://reigokaitranslations.com/wp-json/wp/v2/categories/{category_id}"
+    response = requests.get(url, headers=HEADERS)
+    if response.status_code == 200:
+        data = response.json()
+        return data.get("name", f"category_{category_id}").replace(" ", "_")
+    else:
+        print(f"⚠️ Failed to fetch category name, status: {response.status_code}")
+        return f"category_{category_id}"
+
 def clean_html(raw_html):
-    """Strip HTML and return clean text."""
+    """Strip HTML tags and return plain text"""
     soup = BeautifulSoup(raw_html, "html.parser")
     return soup.get_text(separator="\n", strip=True)
 
 def fetch_post_content(url):
-    """Fetch the title, content, and date of a post from its URL."""
+    """Fetch the title, content, and date of a single post"""
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
         if response.status_code != 200:
@@ -54,6 +64,13 @@ def fetch_post_content(url):
     except Exception as e:
         print(f"❌ Error fetching {url}: {e}")
         return None
+
+# --- DYNAMIC CATEGORY NAME & FILE SETUP ---
+CATEGORY_NAME = get_category_name(CATEGORY_ID)
+API_JSON_FILE = f"{CATEGORY_NAME}_api.json"
+POSTS_JSON_FILE = f"{CATEGORY_NAME}_posts.json"
+OUTPUT_DIR = f"{CATEGORY_NAME}_ebook"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- FETCH API POSTS ---
 if os.path.exists(API_JSON_FILE):
@@ -108,6 +125,7 @@ for post in tqdm(all_posts, desc="Fetching posts", unit="post"):
     if post_content:
         posts_data.append(post_content)
         fetched_urls.add(post["url"])
+        # Save incrementally
         with open(POSTS_JSON_FILE, "w", encoding="utf-8") as f:
             json.dump(posts_data, f, ensure_ascii=False, indent=2)
 
