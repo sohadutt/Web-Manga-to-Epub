@@ -9,7 +9,9 @@ from fpdf import FPDF
 
 # --- CONFIG ---
 load_dotenv()
-CATEGORY_ID = 33  # Set your category ID
+defult_category_id = "33"  # Replace with a default category ID if desired
+CATEGORY_ID = input("Write your category ID: ") or defult_category_id  # Set your category ID
+print(f"Using Category ID: {CATEGORY_ID}")
 PER_PAGE = 100
 CF_CLEARANCE = os.getenv("CF_CLEARANCE")  # Cloudflare clearance token
 if not CF_CLEARANCE:
