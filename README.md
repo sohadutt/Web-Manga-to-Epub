@@ -62,14 +62,6 @@ Create `.env` file:
 CF_CLEARANCE=your_cookie_value_here
 ```
 
-Edit `scraper.py`:
-```python
-CATEGORY_ID = 33
-CATEGORY_NAME = "Living_Safely"
-PER_PAGE = 100
-BASE_URL = "https://your-target-wordpress-site.com"
-```
-
 ### 4. Run
 ```bash
 python scraper.py
@@ -78,11 +70,11 @@ python scraper.py
 ## 📂 Output Structure
 ```
 living-safely-scraper/
-├── Living_Safely_ebook/
-│   ├── Living_Safely.epub
-│   └── Living_Safely.pdf
-├── Living_Safely_api.json
-├── Living_Safely_posts.json
+├── Your_book_ebook/
+│   ├── Your_book.epub
+│   └── Your_book.pdf
+├── Your_book_api.json
+├── Your_book_posts.json
 ├── scraper.py
 ├── requirements.txt
 ├── .env
