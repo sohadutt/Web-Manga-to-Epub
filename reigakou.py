@@ -1,6 +1,4 @@
-import requests
-import json
-import os
+import requests, urllib.request, json, os
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -178,6 +176,12 @@ pdf.add_page()
 
 # Use a Unicode font (make sure DejaVuSans.ttf is in the same directory)
 FONT_PATH = "DejaVuSans.ttf"
+if not os.path.exists(FONT_PATH):
+    print("Downloading DejaVuSans.ttf font...")
+    url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+    urllib.request.urlretrieve(url, FONT_PATH)
+    print("✅ Font downloaded.")
+
 pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
 pdf.set_font("DejaVu", "B", 16)
 pdf.cell(0, 10, CATEGORY_NAME.replace("_"," "), ln=True, align="C")
