@@ -1,4 +1,6 @@
-import requests, urllib.request, json, os
+import requests
+import json
+import os
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -9,7 +11,7 @@ from fpdf import FPDF
 load_dotenv()
 CATEGORY_ID = 33  # Set your category ID
 PER_PAGE = 100
-CF_CLEARANCE = os.getenv("CF_CLEARANCE")  # your cf clearance token
+CF_CLEARANCE = os.getenv("CF_CLEARANCE")  # Cloudflare clearance token
 if not CF_CLEARANCE:
     raise ValueError("CF_CLEARANCE environment variable not set.")
 
@@ -26,7 +28,7 @@ HEADERS = {
 # --- HELPER FUNCTIONS ---
 def get_category_name(category_id):
     """Fetch category name from WordPress API"""
-    url = f"https://reigokaitranslations.com/wp-json/wp/v2/categories/{category_id}"
+    url = f"{BASE_URL.replace('posts','categories')}/{category_id}"
     response = requests.get(url, headers=HEADERS)
     if response.status_code == 200:
         data = response.json()
@@ -36,55 +38,51 @@ def get_category_name(category_id):
         return f"category_{category_id}"
 
 def clean_html(raw_html):
-    """Clean HTML, remove unwanted sections, and format paragraphs."""
+    """Clean HTML and remove unwanted sections"""
     soup = BeautifulSoup(raw_html, "html.parser")
 
     # Remove unwanted elements
     for selector in [
         ".sharedaddy",        # social share
-        ".post-navigation",   # previous/next links
+        ".post-navigation",   # prev/next links
         ".entry-footer",      # footer links like Patreon
-        "script", "style"     # any scripts/styles
+        "script", "style"
     ]:
         for el in soup.select(selector):
             el.decompose()
 
-    # Extract text and normalize paragraphs
     text = soup.get_text(separator="\n", strip=True)
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return "\n\n".join(lines)
 
 def fetch_post_content(url):
-    """Fetch the title, content, and date of a single post"""
+    """Fetch a single post"""
     try:
         response = requests.get(url, headers=HEADERS, timeout=15)
         if response.status_code != 200:
             return None
-
         soup = BeautifulSoup(response.text, "html.parser")
         title_tag = soup.find("h1", class_="entry-title")
         content_tag = soup.find("div", class_="entry-content")
         date_tag = soup.find("time", class_="entry-date")
-
         return {
             "title": title_tag.get_text(strip=True) if title_tag else "No Title",
             "content": content_tag.prettify() if content_tag else "No Content",
             "date": date_tag["datetime"] if date_tag and date_tag.has_attr("datetime") else "No Date",
             "url": url
         }
-
     except Exception as e:
         print(f"❌ Error fetching {url}: {e}")
         return None
 
-# --- SETUP FILES & FOLDERS ---
+# --- FILES & FOLDERS ---
 CATEGORY_NAME = get_category_name(CATEGORY_ID)
 API_JSON_FILE = f"{CATEGORY_NAME}_api.json"
 POSTS_JSON_FILE = f"{CATEGORY_NAME}_posts.json"
 OUTPUT_DIR = f"{CATEGORY_NAME}_ebook"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# --- FETCH API POSTS ---
+# --- FETCH POSTS FROM API ---
 if os.path.exists(API_JSON_FILE):
     with open(API_JSON_FILE, "r", encoding="utf-8") as f:
         all_posts = json.load(f)
@@ -95,28 +93,19 @@ else:
         while True:
             url = f"{BASE_URL}?categories={CATEGORY_ID}&per_page={PER_PAGE}&page={page}"
             response = requests.get(url, headers=HEADERS)
-
-            if response.status_code == 403:
-                print("🚫 403 Forbidden — cf_clearance may be expired or invalid.")
+            if response.status_code != 200:
                 break
-            elif response.status_code != 200:
-                print(f"⚠️ Unexpected status code: {response.status_code}")
-                break
-
             data = response.json()
             if not data:
                 break
-
             for post in data:
                 all_posts.append({
                     "title": post["title"]["rendered"],
                     "url": post["link"],
                     "date": post["date"]
                 })
-
             page += 1
             pbar.update(1)
-
     with open(API_JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(all_posts, f, ensure_ascii=False, indent=2)
 
@@ -133,11 +122,10 @@ else:
 for post in tqdm(all_posts, desc="Fetching posts", unit="post"):
     if post["url"] in fetched_urls:
         continue
-    post_content = fetch_post_content(post["url"])
-    if post_content:
-        posts_data.append(post_content)
+    content = fetch_post_content(post["url"])
+    if content:
+        posts_data.append(content)
         fetched_urls.add(post["url"])
-        # Save incrementally
         with open(POSTS_JSON_FILE, "w", encoding="utf-8") as f:
             json.dump(posts_data, f, ensure_ascii=False, indent=2)
 
@@ -153,7 +141,6 @@ book.add_author("Reigokai Translations")
 chapters = []
 for idx, post in enumerate(tqdm(posts_data, desc="Creating EPUB chapters")):
     content_text = clean_html(post["content"])
-    # Wrap paragraphs properly
     paragraphs = "".join(f"<p>{p}</p>" for p in content_text.split("\n\n"))
     chapter = epub.EpubHtml(title=post["title"], file_name=f"chap_{idx+1}.xhtml", lang="en")
     chapter.content = f"<h1>{post['title']}</h1><h4>{post['date']}</h4>{paragraphs}"
@@ -164,24 +151,18 @@ book.toc = tuple(chapters)
 book.spine = ["nav"] + chapters
 book.add_item(epub.EpubNcx())
 book.add_item(epub.EpubNav())
-
 epub_file = os.path.join(OUTPUT_DIR, f"{CATEGORY_NAME}.epub")
 epub.write_epub(epub_file, book)
 print(f"✅ EPUB created: {epub_file}")
 
-# --- CREATE PDF WITH UNICODE SUPPORT ---
+# --- CREATE PDF (requires manual DejaVuSans.ttf download) ---
+FONT_PATH = "DejaVuSans.ttf"
+if not os.path.exists(FONT_PATH):
+    raise FileNotFoundError(f"{FONT_PATH} not found! Download it from https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf")
+
 pdf = FPDF()
 pdf.set_auto_page_break(auto=True, margin=15)
 pdf.add_page()
-
-# Use a Unicode font (make sure DejaVuSans.ttf is in the same directory)
-FONT_PATH = "DejaVuSans.ttf"
-if not os.path.exists(FONT_PATH):
-    print("Downloading DejaVuSans.ttf font...")
-    url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
-    urllib.request.urlretrieve(url, FONT_PATH)
-    print("✅ Font downloaded.")
-
 pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
 pdf.set_font("DejaVu", "B", 16)
 pdf.cell(0, 10, CATEGORY_NAME.replace("_"," "), ln=True, align="C")
@@ -191,13 +172,12 @@ for post in tqdm(posts_data, desc="Adding posts to PDF"):
     pdf.set_font("DejaVu", "B", 14)
     pdf.multi_cell(0, 10, f"{post['title']} ({post['date']})")
     pdf.ln(2)
-
     pdf.set_font("DejaVu", "", 12)
     content_text = clean_html(post["content"])
     for para in content_text.split("\n\n"):
         pdf.multi_cell(0, 8, para)
-        pdf.ln(4)  # gap between paragraphs
-    pdf.ln(10)  # gap between posts
+        pdf.ln(4)
+    pdf.ln(10)
 
 pdf_file = os.path.join(OUTPUT_DIR, f"{CATEGORY_NAME}.pdf")
 pdf.output(pdf_file)
