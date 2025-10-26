@@ -69,7 +69,7 @@ python scraper.py
 
 ## 📂 Output Structure
 ```
-living-safely-scraper/
+reigakou-scraper-scraper/
 ├── Your_book_ebook/
 │   ├── Your_book.epub
 │   └── Your_book.pdf
