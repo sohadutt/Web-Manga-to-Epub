@@ -2,22 +2,16 @@
 requires = ["setuptools>=77.0.3", "wheel", "build"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-# Tell setuptools to look in src/ for packages
-packages = ["reigokai_scraper"]
-package-dir = {"" = "src"}  
-
 [tool.setuptools.package-data]
-# Include all fonts and assets inside the package
-"reigokai_scraper" = ["assets/*.ttf"]
+"eigokai_scraper" = ["assets/*.ttf"]
 
 [project]
-name = "reigokai_scraper"
+name = "eigokai_scraper"
 version = "1.0.3"
 description = "A script to scrape Reigokai Translations and generate EPUB/PDF eBooks."
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
   { name = "Soham Dutta", email = "sohadutt@outlook.com" }
 ]
@@ -37,5 +31,4 @@ Source = "https://github.com/sohadutt/Web-Manga-to-Epub"
 Issues = "https://github.com/sohadutt/Web-Manga-to-Epub/issues"
 
 [project.scripts]
-# CLI entry point for running the scraper
-reigokai-scraper = "reigokai_scraper.__main__:main"
+eigokai-scraper = "eigokai_scraper.__main__:main"
