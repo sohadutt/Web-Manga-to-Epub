@@ -51,6 +51,7 @@ def clean_story_content(raw_text):
     raw_text = re.sub(r"TL:.*\n", "", raw_text)
     raw_text = re.sub(r"Support my translations.*", "", raw_text, flags=re.IGNORECASE)
     raw_text = re.sub(r"(Next Chapter\s*\n)+", "", raw_text)
+    raw_text = re.sub(r"(Previous Chapter\s*\n)+", "", raw_text)
     raw_text = re.sub(r"Not a Chapter:.*\n", "", raw_text)
     raw_text = re.sub(r"Author:.*\n", "", raw_text)
     raw_text = re.sub(r"\n{3,}", "\n\n", raw_text)
@@ -75,14 +76,14 @@ def fetch_post_content(url):
 
 # --- FILES & FOLDERS ---
 CATEGORY_NAME = get_category_name(CATEGORY_ID)
-API_JSON_FILE = f"{CATEGORY_NAME}_api.json"
 POSTS_JSON_FILE = f"{CATEGORY_NAME}_posts.json"
+CONTENT_JSON_FILE = f"{CATEGORY_NAME}_content.json"
 OUTPUT_DIR = f"{CATEGORY_NAME}_ebook"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- FETCH POSTS FROM API ---
-if os.path.exists(API_JSON_FILE):
-    with open(API_JSON_FILE, "r", encoding="utf-8") as f:
+if os.path.exists(POSTS_JSON_FILE):
+    with open(POSTS_JSON_FILE, "r", encoding="utf-8") as f:
         all_posts = json.load(f)
 else:
     all_posts = []
@@ -100,14 +101,14 @@ else:
             all_posts.extend([{"title": p["title"]["rendered"], "url": p["link"], "date": p["date"]} for p in data])
             page += 1
             pbar.update(1)
-    with open(API_JSON_FILE, "w", encoding="utf-8") as f:
+    with open(POSTS_JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(all_posts, f, ensure_ascii=False, indent=2)
 
 all_posts.reverse()  # oldest first
 
 # --- LOAD EXISTING POST CONTENT ---
-if os.path.exists(POSTS_JSON_FILE):
-    with open(POSTS_JSON_FILE, "r", encoding="utf-8") as f:
+if os.path.exists(CONTENT_JSON_FILE):
+    with open(CONTENT_JSON_FILE, "r", encoding="utf-8") as f:
         posts_data = json.load(f)
     fetched_urls = {post["url"] for post in posts_data}
 else:
@@ -123,7 +124,7 @@ for post in tqdm(all_posts, desc="Posts", unit="post"):
     if content:
         posts_data.append(content)
         fetched_urls.add(post["url"])
-        with open(POSTS_JSON_FILE, "w", encoding="utf-8") as f:
+        with open(CONTENT_JSON_FILE, "w", encoding="utf-8") as f:
             json.dump(posts_data, f, ensure_ascii=False, indent=2)
 
 print(f"\n✅ Total posts fetched: {len(posts_data)}")
