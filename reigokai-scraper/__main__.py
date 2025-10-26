@@ -4,7 +4,6 @@ import requests
 from pathlib import Path
 import zipfile
 
-
 def extract_assets():
     """Extract bundled assets.zip if present."""
     base_dir = Path(__file__).parent
@@ -21,12 +20,13 @@ def extract_assets():
         pass
     else:
         print("⚠️ No assets.zip found (continuing...)")
-
+    return extract_dir
 
 def ensure_font():
     """Ensure DejaVuSans.ttf exists or download it automatically."""
-    font_path = Path(__file__).parent / "assets" / "DejaVuSans.ttf"
-    font_path.parent.mkdir(exist_ok=True)
+    assets_dir = Path(__file__).parent / "assets"
+    font_path = assets_dir / "DejaVuSans.ttf"
+    assets_dir.mkdir(exist_ok=True)
 
     if not font_path.exists():
         print("📦 Downloading DejaVuSans.ttf...")
@@ -34,33 +34,36 @@ def ensure_font():
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
-            with open(font_path, "wb") as f:
-                f.write(response.content)
+            font_path.write_bytes(response.content)
             print("✅ Font downloaded successfully.")
         except Exception as e:
             print(f"❌ Failed to download font: {e}")
             sys.exit(1)
 
-    return str(font_path)
-
+    return font_path
 
 def main():
     """Main entry point for the packaged app."""
     print("🚀 Starting Reigokai Scraper...")
+
+    # Ensure assets and fonts
     extract_assets()
     font_file = ensure_font()
 
-    # Run your main logic (scraper)
+    # Attempt to import scraper
     try:
-        from . import scraper
-        scraper.run(font_file)
+        # Works for both pip-installed and local editable installs
+        if __package__:
+            from . import scraper
+        else:
+            import scraper
+        scraper.run(str(font_file))
     except ImportError as e:
         print(f"❌ Could not import scraper module: {e}")
         sys.exit(1)
     except Exception as e:
         print(f"💥 Error during execution: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

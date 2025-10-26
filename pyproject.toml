@@ -1,17 +1,17 @@
 [build-system]
-requires = ["setuptools >= 77.0.3"]
+requires = ["setuptools>=77.0.3", "wheel", "build"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
-"reigokai_scraper" = ["*.ttf"]
+"reigokai_scraper" = ["assets/*.ttf"]
 
 [project]
 name = "reigokai_scraper"
-version = "1.0.0"
+version = "1.0.3"
 description = "A script to scrape Reigokai Translations and generate EPUB/PDF eBooks."
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
   { name = "Soham Dutta", email = "sohadutt@outlook.com" }
 ]
@@ -32,5 +32,3 @@ Issues = "https://github.com/sohadutt/Web-Manga-to-Epub/issues"
 
 [project.scripts]
 reigokai-scraper = "reigokai_scraper.__main__:main"
-
-
