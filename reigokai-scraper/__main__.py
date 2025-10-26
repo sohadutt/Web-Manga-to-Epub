@@ -30,7 +30,7 @@ def ensure_font():
 
     if not font_path.exists():
         print("📦 Downloading DejaVuSans.ttf...")
-        url = "hhttps://github.com/dejavu-fonts/dejavu-fonts/raw/version_2_37/ttf/DejaVuSans.ttf"
+        url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/version_2_37/ttf/DejaVuSans.ttf"
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
@@ -52,12 +52,14 @@ def main():
 
     # Attempt to import scraper
     try:
-        # Works for both pip-installed and local editable installs
-        if __package__:
-            from . import scraper
-        else:
-            import scraper
+        # Import scraper from local package
+        sys.path.insert(0, str(Path(__file__).parent))
+        import scraper
+
+        # Call run() with font file path
+        # Make sure scraper.run(font_file) accepts 1 argument
         scraper.run(str(font_file))
+
     except ImportError as e:
         print(f"❌ Could not import scraper module: {e}")
         sys.exit(1)
