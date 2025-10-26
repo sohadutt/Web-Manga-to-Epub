@@ -30,7 +30,7 @@ def ensure_font():
 
     if not font_path.exists():
         print("📦 Downloading DejaVuSans.ttf...")
-        url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+        url = "hhttps://github.com/dejavu-fonts/dejavu-fonts/raw/version_2_37/ttf/DejaVuSans.ttf"
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()

@@ -5,6 +5,7 @@ set -e
 VENV_DIR="venv"
 PACKAGE_NAME="reigokai-scraper"
 REPO_ZIP_URL="https://github.com/sohadutt/Web-Manga-to-Epub/archive/refs/heads/main.zip"
+REPO_DIR="Web-Manga-to-Epub-main/reigokai-scraper"
 ASSETS_DIR="./assets"
 FONT_FILE="$ASSETS_DIR/DejaVuSans.ttf"
 
@@ -21,32 +22,26 @@ fi
 # Activate venv
 source "$VENV_DIR/bin/activate"
 
-# 2️⃣ Upgrade pip
-echo "⬆️ Upgrading pip..."
+# 2️⃣ Upgrade pip, setuptools, wheel
+echo "⬆️ Upgrading pip, setuptools, and wheel..."
 pip install --upgrade pip setuptools wheel
 
-# 3️⃣ Download repo ZIP if missing
-if [ ! -d "${PACKAGE_NAME}-repo" ]; then
+# 3️⃣ Download GitHub repo ZIP if missing
+if [ ! -d "$REPO_DIR" ]; then
     echo "📥 Downloading $PACKAGE_NAME from GitHub..."
     curl -L -o "${PACKAGE_NAME}.zip" "$REPO_ZIP_URL"
     echo "📦 Extracting ZIP..."
     unzip -q "${PACKAGE_NAME}.zip"
     rm "${PACKAGE_NAME}.zip"
-    # Detect the extracted folder dynamically
-    EXTRACTED_DIR=$(ls -d Web-Manga-to-Epub-*)
-    mv "$EXTRACTED_DIR" "${PACKAGE_NAME}-repo"
 else
     echo "✅ Repo already exists, skipping download..."
 fi
 
-# Set the path to the Python package inside the extracted repo
-REPO_DIR="${PACKAGE_NAME}-repo/reigokai-scraper"
-
 # 4️⃣ Install dependencies
-echo "📦 Installing Python dependencies..."
+echo "📦 Installing dependencies..."
 pip install --upgrade requests beautifulsoup4 tqdm ebooklib fpdf python-dotenv lxml
 
-# 5️⃣ Download assets/fonts if missing
+# 5️⃣ Ensure assets/fonts
 mkdir -p "$ASSETS_DIR"
 if [ ! -f "$FONT_FILE" ]; then
     echo "📦 Downloading DejaVuSans.ttf..."
@@ -56,7 +51,7 @@ else
     echo "✅ Font already exists, skipping..."
 fi
 
-# 6️⃣ Run scraper directly
+# 6️⃣ Run scraper
 echo "🚀 Running $PACKAGE_NAME..."
 python3 "$REPO_DIR/__main__.py"
 
