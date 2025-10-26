@@ -58,7 +58,7 @@ def main():
 
         # Call run() with font file path
         # Make sure scraper.run(font_file) accepts 1 argument
-        scraper.run(str(font_file))
+        scraper.run()
 
     except ImportError as e:
         print(f"❌ Could not import scraper module: {e}")
