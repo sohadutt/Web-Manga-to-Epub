@@ -5,7 +5,7 @@ set -e
 VENV_DIR="venv"
 PACKAGE_NAME="reigokai-scraper"
 REPO_ZIP_URL="https://github.com/sohadutt/Web-Manga-to-Epub/archive/refs/heads/main.zip"
-REPO_DIR="Web-Manga-to-Epub-main"
+REPO_DIR="Web-Manga-to-Epub-main/reigokai_scraper"
 ASSETS_DIR="./assets"
 FONT_FILE="$ASSETS_DIR/DejaVuSans.ttf"
 
@@ -37,9 +37,9 @@ else
     echo "✅ Repo already exists, skipping download..."
 fi
 
-# 4️⃣ Install Python package and dependencies
-echo "📦 Installing dependencies and $PACKAGE_NAME locally..."
-pip install --upgrade --editable "$REPO_DIR"
+# 4️⃣ Install dependencies only (no need to install package)
+echo "📦 Installing dependencies..."
+pip install --upgrade requests beautifulsoup4 tqdm ebooklib fpdf python-dotenv lxml
 
 # 5️⃣ Download assets/fonts if missing
 mkdir -p "$ASSETS_DIR"
@@ -51,8 +51,8 @@ else
     echo "✅ Font already exists, skipping..."
 fi
 
-# 6️⃣ Run scraper directly via Python
+# 6️⃣ Run scraper directly with Python
 echo "🚀 Running $PACKAGE_NAME..."
-python3 -m reigokai_scraper.__main__
+python3 "$REPO_DIR/__main__.py"
 
 echo "🎉 Setup and execution complete!"
