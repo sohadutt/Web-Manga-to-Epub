@@ -2,13 +2,18 @@
 requires = ["setuptools>=77.0.3", "wheel", "build"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+# Tell setuptools to look in src/ for packages
+packages = ["reigokai_scraper"]
+package-dir = {"" = "src"}  
+
 [tool.setuptools.package-data]
 # Include all fonts and assets inside the package
 "reigokai_scraper" = ["assets/*.ttf"]
 
 [project]
 name = "reigokai_scraper"
-version = "1.0.2"
+version = "1.0.3"
 description = "A script to scrape Reigokai Translations and generate EPUB/PDF eBooks."
 readme = "README.md"
 requires-python = ">=3.8"
