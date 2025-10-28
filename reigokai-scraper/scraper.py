@@ -16,34 +16,31 @@ def ensure_font():
     if not font_path.exists():
         print("📦 Downloading DejaVuSans.ttf...")
         url = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
-        try:
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            font_path.write_bytes(response.content)
-            print("✅ Font downloaded.")
-        except Exception as e:
-            print(f"❌ Failed to download font: {e}")
-            raise
+        response = requests.get(url)
+        response.raise_for_status()
+        with open(font_path, "wb") as f:
+            f.write(response.content)
+        print("✅ Font downloaded.")
     return str(font_path)
 
 
 def run():
     """Main entry point for the Reigokai scraper."""
     load_dotenv()
-
-    # --- User input ---
     DEFAULT_CATEGORY_ID = "33"
     CATEGORY_ID = input(f"Enter category ID (default {DEFAULT_CATEGORY_ID}): ") or DEFAULT_CATEGORY_ID
     print(f"📌 Using Category ID: {CATEGORY_ID}")
 
+    PER_PAGE = 100
     CF_CLEARANCE = os.getenv("CF_CLEARANCE")
     if not CF_CLEARANCE:
         raise ValueError("⚠️ CF_CLEARANCE environment variable not set. Add it to your .env file.")
 
     BASE_URL = "https://reigokaitranslations.com/wp-json/wp/v2/posts"
     HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0.1 Safari/605.1.15",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "en-IN,en-GB;q=0.9,en;q=0.8",
         "Referer": "https://reigokaitranslations.com/",
         "Cookie": f"cf_clearance={CF_CLEARANCE}"
     }
@@ -51,13 +48,11 @@ def run():
     # --- Helpers ---
     def get_category_name(category_id):
         url = f"{BASE_URL.replace('posts','categories')}/{category_id}"
-        try:
-            response = requests.get(url, headers=HEADERS, timeout=15)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("name", f"category_{category_id}").replace(" ", "_")
-        except:
-            pass
+        response = requests.get(url, headers=HEADERS)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("name", f"category_{category_id}").replace(" ", "_")
+        print(f"⚠️ Failed to fetch category name (status {response.status_code})")
         return f"category_{category_id}"
 
     def clean_html(raw_html):
@@ -96,25 +91,25 @@ def run():
             print(f"❌ Error fetching {url}: {e}")
             return None
 
-    # --- Setup files/folders ---
+    # --- Files & folders ---
     CATEGORY_NAME = get_category_name(CATEGORY_ID)
     POSTS_JSON_FILE = f"{CATEGORY_NAME}_posts.json"
     CONTENT_JSON_FILE = f"{CATEGORY_NAME}_content.json"
     OUTPUT_DIR = f"{CATEGORY_NAME}_ebook"
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # --- Fetch posts ---
-    all_posts = []
+    # --- Fetch posts from API ---
     if os.path.exists(POSTS_JSON_FILE):
         with open(POSTS_JSON_FILE, "r", encoding="utf-8") as f:
             all_posts = json.load(f)
     else:
+        all_posts = []
         page = 1
         print("🌐 Fetching posts from API...")
         with tqdm(desc="API Pages", unit="page") as pbar:
             while True:
-                url = f"{BASE_URL}?categories={CATEGORY_ID}&per_page=100&page={page}"
-                response = requests.get(url, headers=HEADERS, timeout=15)
+                url = f"{BASE_URL}?categories={CATEGORY_ID}&per_page={PER_PAGE}&page={page}"
+                response = requests.get(url, headers=HEADERS)
                 if response.status_code != 200:
                     break
                 data = response.json()
@@ -128,14 +123,16 @@ def run():
 
     all_posts.reverse()
 
-    # --- Fetch post content ---
-    posts_data = []
-    fetched_urls = set()
+    # --- Load existing post content ---
     if os.path.exists(CONTENT_JSON_FILE):
         with open(CONTENT_JSON_FILE, "r", encoding="utf-8") as f:
             posts_data = json.load(f)
-            fetched_urls = {post["url"] for post in posts_data}
+        fetched_urls = {post["url"] for post in posts_data}
+    else:
+        posts_data = []
+        fetched_urls = set()
 
+    # --- Fetch post content ---
     print("📄 Fetching individual posts...")
     for post in tqdm(all_posts, desc="Posts", unit="post"):
         if post["url"] in fetched_urls:
